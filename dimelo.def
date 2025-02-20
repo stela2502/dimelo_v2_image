@@ -1,0 +1,88 @@
+# Singularity definition file
+Bootstrap: docker
+From: ubuntu:latest
+
+# Setup environment
+%environment
+    export PATH=/opt/python/bin:$PATH
+    export PYTHONPATH=/opt/python/lib/python3.7/site-packages:$PYTHONPATH
+    export PYTHONNOUSERSITE="true"
+    export PIP_BREAK_SYSTEM_PACKAGES=1
+
+# Install system dependencies with apt
+%post
+    export PYTHONNOUSERSITE="true"
+    export PIP_BREAK_SYSTEM_PACKAGES=1
+
+    export DEBIAN_FRONTEND=noninteractive
+    export TZ="Europe/Stockholm"
+
+    # Update and install required system packages
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        gcc \
+        gfortran \
+        libffi-dev \
+        zlib1g-dev \
+        libbz2-dev \
+        libmagic1 \
+        libxml2-dev \
+        libcurl4-openssl-dev \
+        git \
+        make \
+        wget \
+        libopenblas-dev \
+        liblapack-dev \
+        python3-dev \
+        python3-pip \
+        bash \
+        libssl-dev \
+        libncurses-dev \
+        sqlite3 \
+        libreadline-dev \
+        tk \
+        libgcc-9-dev \
+        libgomp1 \
+        ca-certificates \
+        libstdc++6 \
+        xz-utils \
+        curl \
+	pkg-config \
+    	liblzma-dev \
+    	libclang-dev \
+        libsqlite3-dev \
+        libncurses5-dev \
+        libgdbm-dev \
+        libnss3-dev
+
+    pip install jupyterlab papermill nbconvert tqdm ipywidgets
+ 
+    # Install Rust
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+    CARGO_INSTALL_ROOT=/usr/local $HOME/.cargo/bin/cargo install --git https://github.com/nanoporetech/modkit.git
+    
+    # Allow pip to modify system-wide packages
+    export PIP_BREAK_SYSTEM_PACKAGES=1
+
+    pip install jupyterlab papermill nbconvert tqdm ipywidgets
+     
+    ## that crappy dimelo package uses an old python version!?!
+
+    git clone https://github.com/streetslab/dimelo_v2.git
+    cd dimelo_v2
+    pip install .    
+
+    cd .. && rm -Rf dimelo_v2
+    rm -rf /var/lib/apt/lists/*
+
+    # my start script
+    mkdir /workspace
+    echo "jupyter lab --port 9734 --ip=0.0.0.0 --allow-root --no-browser" > /workspace/launch_jupyter.sh
+    chmod +x /workspace/launch_jupyter.sh
+
+
+%runscript
+    # Run script to start the Python application
+    /workspace/launch_jupyter.sh
+
